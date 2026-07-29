@@ -1,0 +1,162 @@
+{
+  "info": {
+    "name": "Scotiabank Exam - Pet API v2",
+    "description": "Pruebas funcionales, validaciones, trazabilidad y health check.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "petId",
+      "value": "55667788"
+    },
+    {
+      "key": "correlationId",
+      "value": "postman-scotiabank-001"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Crear mascota",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          },
+          {
+            "key": "X-Correlation-ID",
+            "value": "{{correlationId}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"id\": {{petId}},\n  \"status\": \"available\",\n  \"name\": \"testingPet1\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/pet"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Retorna 201 Created', function () { pm.response.to.have.status(201); });",
+              "pm.test('Incluye transactionId UUID', function () { pm.expect(pm.response.json().transactionId).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i); });",
+              "pm.test('Preserva correlation ID', function () { pm.expect(pm.response.headers.get('X-Correlation-ID')).to.eql(pm.variables.get('correlationId')); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Consultar mascota creada",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "X-Correlation-ID",
+            "value": "{{correlationId}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/pet/{{petId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Retorna 200 OK', function () { pm.response.to.have.status(200); });",
+              "pm.test('Retorna los datos esperados', function () { var body = pm.response.json(); pm.expect(body.id).to.eql(Number(pm.variables.get('petId'))); pm.expect(body.name).to.eql('testingPet1'); pm.expect(body.status).to.eql('available'); });",
+              "pm.test('Preserva correlation ID', function () { pm.expect(pm.response.headers.get('X-Correlation-ID')).to.eql(pm.variables.get('correlationId')); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Mascota inexistente (404)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/pet/0"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Retorna 404 Not Found', function () { pm.response.to.have.status(404); });",
+              "pm.test('Retorna mensaje de error controlado', function () { pm.expect(pm.response.json().message).to.eql('La mascota solicitada no existe'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Validar request inválido (400)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{baseUrl}}/api/pet"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Retorna 400 Bad Request', function () { pm.response.to.have.status(400); });",
+              "pm.test('Incluye mensajes de validación', function () { var message = pm.response.json().message; pm.expect(message).to.include('id es requerido'); pm.expect(message).to.include('name es requerido'); pm.expect(message).to.include('status es requerido'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Health check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/actuator/health"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Health retorna 200 OK', function () { pm.response.to.have.status(200); });",
+              "pm.test('Aplicación está UP', function () { pm.expect(pm.response.json().status).to.eql('UP'); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ]
+}
